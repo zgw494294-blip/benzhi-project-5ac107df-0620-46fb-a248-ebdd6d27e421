@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"stagecaption/internal/domain"
@@ -80,8 +81,16 @@ func (s *Store) ListProjectQueue(ctx context.Context) ([]ProjectQueueRecord, err
 			return nil, err
 		}
 		p.Status = domain.ProjectStatus(status)
-		p.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
-		p.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updated)
+		createdAt, err := time.Parse(time.RFC3339Nano, created)
+		if err != nil {
+			return nil, fmt.Errorf("解析项目创建时间失败：%w", err)
+		}
+		updatedAt, err := time.Parse(time.RFC3339Nano, updated)
+		if err != nil {
+			return nil, fmt.Errorf("解析项目更新时间失败：%w", err)
+		}
+		p.CreatedAt = createdAt
+		p.UpdatedAt = updatedAt
 		out = append(out, record)
 	}
 	return out, rows.Err()
