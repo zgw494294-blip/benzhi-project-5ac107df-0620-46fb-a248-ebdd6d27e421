@@ -31,63 +31,66 @@ func (s *Service) GetWorkspace(ctx context.Context, id string) (Workspace, error
 }
 
 func (s *Service) GetWorkspaceFiltered(ctx context.Context, id string, findingFilter FindingFilter, issueFilter IssueFilter, fromRevision, toRevision int64, reviewer string) (Workspace, error) {
-	p, err := s.Store.GetProject(context.WithoutCancel(ctx), id)
+	if err := ctx.Err(); err != nil {
+		return Workspace{}, err
+	}
+	p, err := s.Store.GetProject(ctx, id)
 	if err != nil {
 		return Workspace{}, err
 	}
-	cues, err := s.Store.ListCues(context.WithoutCancel(ctx), id)
+	cues, err := s.Store.ListCues(ctx, id)
 	if err != nil {
 		return Workspace{}, err
 	}
-	findings, err := s.Store.ListFindings(context.WithoutCancel(ctx), id)
+	findings, err := s.Store.ListFindings(ctx, id)
 	if err != nil {
 		return Workspace{}, err
 	}
-	rehearsals, err := s.Store.ListRehearsals(context.WithoutCancel(ctx), id)
+	rehearsals, err := s.Store.ListRehearsals(ctx, id)
 	if err != nil {
 		return Workspace{}, err
 	}
-	issues, err := s.Store.ListIssues(context.WithoutCancel(ctx), id)
+	issues, err := s.Store.ListIssues(ctx, id)
 	if err != nil {
 		return Workspace{}, err
 	}
-	audits, err := s.Store.ListAudits(context.WithoutCancel(ctx), id)
+	audits, err := s.Store.ListAudits(ctx, id)
 	if err != nil {
 		return Workspace{}, err
 	}
 	w := Workspace{Project: p, Cues: cues, Findings: findings, Rehearsals: rehearsals, Issues: issues, Audits: audits}
-	w.FindingView, err = s.QueryFindings(context.WithoutCancel(ctx), id, findingFilter)
+	w.FindingView, err = s.QueryFindings(ctx, id, findingFilter)
 	if err != nil {
 		return Workspace{}, err
 	}
-	w.IssueView, err = s.QueryIssues(context.WithoutCancel(ctx), id, issueFilter)
+	w.IssueView, err = s.QueryIssues(ctx, id, issueFilter)
 	if err != nil {
 		return Workspace{}, err
 	}
-	if r, e := s.Store.GetRelease(context.WithoutCancel(ctx), id); e == nil {
+	if r, e := s.Store.GetRelease(ctx, id); e == nil {
 		w.Release = &r
 	}
 	if p.Revision > 1 {
-		if d, e := s.Store.Diff(context.WithoutCancel(ctx), id, 1, p.Revision); e == nil {
+		if d, e := s.Store.Diff(ctx, id, 1, p.Revision); e == nil {
 			w.Diff = &d
 		}
 	}
 	if fromRevision == 0 && toRevision == 0 {
-		if comparison, e := s.DefaultComparison(context.WithoutCancel(ctx), id); e == nil {
+		if comparison, e := s.DefaultComparison(ctx, id); e == nil {
 			w.Comparison = &comparison
 		}
 	} else {
 		if fromRevision == 0 || toRevision == 0 {
 			return Workspace{}, fmt.Errorf("%w：修订区间必须同时提供起止修订", domain.ErrValidation)
 		}
-		comparison, e := s.CompareRevisions(context.WithoutCancel(ctx), id, fromRevision, toRevision)
+		comparison, e := s.CompareRevisions(ctx, id, fromRevision, toRevision)
 		if e != nil {
 			return Workspace{}, e
 		}
 		w.Comparison = &comparison
 	}
 	if p.Status == domain.StatusReview {
-		gate, e := s.CheckLockGate(context.WithoutCancel(ctx), id, reviewer)
+		gate, e := s.CheckLockGate(ctx, id, reviewer)
 		if e != nil {
 			return Workspace{}, e
 		}
