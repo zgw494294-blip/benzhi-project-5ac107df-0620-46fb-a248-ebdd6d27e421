@@ -34,21 +34,21 @@ func (s *Store) GetProject(ctx context.Context, id string) (domain.CaptionProjec
 }
 
 func (s *Store) ListProjects(ctx context.Context) ([]domain.CaptionProject, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id FROM projects ORDER BY updated_at DESC,id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,title,production_version,frame_rate,duration_millis,time_origin,status,revision,last_editor,created_at,updated_at FROM projects ORDER BY updated_at DESC,id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []domain.CaptionProject
 	for rows.Next() {
-		var id string
-		if err = rows.Scan(&id); err != nil {
+		var p domain.CaptionProject
+		var status, created, updated string
+		if err = rows.Scan(&p.ID, &p.Title, &p.ProductionVersion, &p.FrameRate, &p.DurationMillis, &p.TimeOrigin, &status, &p.Revision, &p.LastEditor, &created, &updated); err != nil {
 			return nil, err
 		}
-		p, e := s.GetProject(ctx, id)
-		if e != nil {
-			return nil, e
-		}
+		p.Status = domain.ProjectStatus(status)
+		p.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
+		p.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updated)
 		out = append(out, p)
 	}
 	return out, rows.Err()
