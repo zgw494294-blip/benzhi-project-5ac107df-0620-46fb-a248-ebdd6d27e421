@@ -111,6 +111,9 @@ func (s *Service) AcquireLease(ctx context.Context, projectID string, in LeaseIn
 	}
 	token := newID("lease_")
 	lease, err := s.Store.AcquireLease(ctx, storeLease(projectID, scene, token, actor, s.Now().Add(time.Duration(ttl)*time.Second)))
+	if err == nil {
+		s.invalidateGateCache(projectID)
+	}
 	return lease.Token, lease.ExpiresAt, err
 }
 
@@ -119,5 +122,9 @@ func storeLease(projectID, scene, token, actor string, expires time.Time) store.
 }
 
 func (s *Service) ReleaseLease(ctx context.Context, projectID, scene, token string) error {
-	return s.Store.ReleaseLease(ctx, projectID, scene, token)
+	err := s.Store.ReleaseLease(ctx, projectID, scene, token)
+	if err == nil {
+		s.invalidateGateCache(projectID)
+	}
+	return err
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +36,22 @@ func newID(prefix string) string {
 }
 
 func cleanActor(actor string) string { return trimLimit(actor, 80) }
+
+// invalidateGateCache drops every cached lock-gate result for the given
+// project. Leases are acquired and released without changing the project
+// revision, so the gate cache (keyed by revision) must be cleared whenever
+// the active lease set changes; otherwise a gate computed when no leases
+// were active could be reused to authorize locking while an editor still
+// holds a scene lease.
+func (s *Service) invalidateGateCache(projectID string) {
+	s.gateMu.Lock()
+	defer s.gateMu.Unlock()
+	for key := range s.gateCache {
+		if strings.HasPrefix(key, projectID+"\x00") {
+			delete(s.gateCache, key)
+		}
+	}
+}
 
 func trimLimit(v string, max int) string {
 	r := []rune(v)
