@@ -65,12 +65,21 @@ func makeBundle(p domain.CaptionProject, cues []domain.CaptionCue, reviewer, id 
 	return BundleFiles{WebVTT: webvtt, Manifest: manifestBytes, Credential: credentialBytes, Release: r}, nil
 }
 
+func cloneBundleFiles(b BundleFiles) BundleFiles {
+	return BundleFiles{
+		WebVTT:     append([]byte(nil), b.WebVTT...),
+		Manifest:   append([]byte(nil), b.Manifest...),
+		Credential: append([]byte(nil), b.Credential...),
+		Release:    b.Release,
+	}
+}
+
 func (s *Service) GetBundle(ctx context.Context, projectID string) (BundleFiles, error) {
 	s.bundleMu.RLock()
 	cached, ok := s.bundleCache[projectID]
 	s.bundleMu.RUnlock()
 	if ok {
-		return cached, nil
+		return cloneBundleFiles(cached), nil
 	}
 	r, err := s.Store.GetRelease(ctx, projectID)
 	if err != nil {
@@ -95,7 +104,7 @@ func (s *Service) GetBundle(ctx context.Context, projectID string) (BundleFiles,
 		s.bundleCache[projectID] = files
 	}
 	s.bundleMu.Unlock()
-	return files, nil
+	return cloneBundleFiles(files), nil
 }
 
 func VerifyBundle(files BundleFiles) VerifyResult {
