@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"stagecaption/internal/domain"
 )
@@ -34,8 +35,21 @@ func (s *Store) ListCues(ctx context.Context, projectID string) ([]domain.Captio
 func (t *Tx) UpsertCue(ctx context.Context, c domain.CaptionCue) error {
 	t.cuesChanged = true
 	c.Revision = t.nextRevision
-	_, err := t.tx.ExecContext(ctx, `INSERT INTO cues(id,project_id,scene,speaker,text,start_millis,end_millis,position,revision,updated_by) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET scene=excluded.scene,speaker=excluded.speaker,text=excluded.text,start_millis=excluded.start_millis,end_millis=excluded.end_millis,position=excluded.position,revision=excluded.revision,updated_by=excluded.updated_by WHERE cues.project_id=excluded.project_id`, c.ID, c.ProjectID, c.Scene, c.Speaker, c.Text, c.StartMillis, c.EndMillis, c.Position, c.Revision, c.UpdatedBy)
-	return err
+	res, err := t.tx.ExecContext(ctx, `INSERT INTO cues(id,project_id,scene,speaker,text,start_millis,end_millis,position,revision,updated_by) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET scene=excluded.scene,speaker=excluded.speaker,text=excluded.text,start_millis=excluded.start_millis,end_millis=excluded.end_millis,position=excluded.position,revision=excluded.revision,updated_by=excluded.updated_by WHERE cues.project_id=excluded.project_id`, c.ID, c.ProjectID, c.Scene, c.Speaker, c.Text, c.StartMillis, c.EndMillis, c.Position, c.Revision, c.UpdatedBy)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		// ON CONFLICT(id) WHERE 条件未命中，说明该字幕 ID 已属于其他项目，
+		// INSERT 未写入且 UPDATE 未生效。若当作成功提交，会留下空写入却推进
+		// 修订号、切换状态并生成审计快照，因此必须中断事务。
+		return fmt.Errorf("%w：字幕 %s 已属于其他项目", domain.ErrValidation, c.ID)
+	}
+	return nil
 }
 
 func (t *Tx) DeleteCue(ctx context.Context, id string) error {

@@ -22,6 +22,10 @@ func (s *Service) UpsertCue(ctx context.Context, projectID string, in CueInput) 
 	id := trimLimit(in.ID, 80)
 	if id == "" {
 		id = newID("cue_")
+	} else if owner, ownerErr := s.Store.CueProject(ctx, id); ownerErr == nil && owner != projectID {
+		return p, fmt.Errorf("%w：字幕 %s 已属于其他项目", domain.ErrValidation, id)
+	} else if ownerErr != nil && ownerErr != domain.ErrNotFound {
+		return p, ownerErr
 	}
 	cue, err := domain.NormalizeCue(domain.CaptionCue{ID: id, ProjectID: projectID, Scene: in.Scene, Speaker: in.Speaker, Text: in.Text, StartMillis: in.StartMillis, EndMillis: in.EndMillis, Position: in.Position, UpdatedBy: actor}, p.DurationMillis)
 	if err != nil {
