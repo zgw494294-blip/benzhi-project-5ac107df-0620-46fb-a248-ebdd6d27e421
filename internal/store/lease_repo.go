@@ -16,6 +16,10 @@ type Lease struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
+func leaseRuntimeKey(projectID, scene string) string {
+	return projectID + "\x00" + scene
+}
+
 func (s *Store) AcquireLease(ctx context.Context, l Lease) (Lease, error) {
 	if l.ProjectID == "" || l.Scene == "" || l.Token == "" || l.Holder == "" {
 		return l, domain.ErrValidation
@@ -54,7 +58,13 @@ func (s *Store) AcquireLease(ctx context.Context, l Lease) (Lease, error) {
 	if changed == 0 {
 		return l, domain.ErrLeaseRequired
 	}
-	return l, tx.Commit()
+	if err = tx.Commit(); err != nil {
+		return l, err
+	}
+	s.leaseMu.Lock()
+	s.runtimeLeaseTokens[leaseRuntimeKey(l.ProjectID, l.Scene)] = l.Token
+	s.leaseMu.Unlock()
+	return l, nil
 }
 
 func (s *Store) ReleaseLease(ctx context.Context, projectID, scene, token string) error {
@@ -66,6 +76,12 @@ func (s *Store) ReleaseLease(ctx context.Context, projectID, scene, token string
 	if n == 0 {
 		return domain.ErrLeaseRequired
 	}
+	s.leaseMu.Lock()
+	key := leaseRuntimeKey(projectID, scene)
+	if s.runtimeLeaseTokens[key] == token {
+		delete(s.runtimeLeaseTokens, key)
+	}
+	s.leaseMu.Unlock()
 	return nil
 }
 
@@ -80,6 +96,12 @@ func (t *Tx) RequireLease(ctx context.Context, scene, token, holder string) erro
 	}
 	at, _ := time.Parse(time.RFC3339Nano, expires)
 	if !at.After(t.store.now().UTC()) {
+		return domain.ErrLeaseRequired
+	}
+	t.store.leaseMu.RLock()
+	runtimeToken := t.store.runtimeLeaseTokens[leaseRuntimeKey(t.projectID, scene)]
+	t.store.leaseMu.RUnlock()
+	if runtimeToken != token {
 		return domain.ErrLeaseRequired
 	}
 	return nil

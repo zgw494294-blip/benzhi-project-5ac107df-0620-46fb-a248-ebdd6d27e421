@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -12,8 +13,10 @@ import (
 )
 
 type Store struct {
-	db  *sql.DB
-	now func() time.Time
+	db                 *sql.DB
+	now                func() time.Time
+	leaseMu            sync.RWMutex
+	runtimeLeaseTokens map[string]string
 }
 
 func Open(path string) (*Store, error) {
@@ -25,7 +28,7 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("打开 SQLite：%w", err)
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, now: time.Now}
+	s := &Store{db: db, now: time.Now, runtimeLeaseTokens: make(map[string]string)}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err = db.ExecContext(ctx, "PRAGMA foreign_keys=ON"); err != nil {
