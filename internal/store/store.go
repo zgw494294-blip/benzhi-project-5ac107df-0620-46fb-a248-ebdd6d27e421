@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -12,8 +13,10 @@ import (
 )
 
 type Store struct {
-	db  *sql.DB
-	now func() time.Time
+	db             *sql.DB
+	now            func() time.Time
+	cueOwnerMu     sync.Mutex
+	cueOwnerLookup *sql.Stmt
 }
 
 func Open(path string) (*Store, error) {

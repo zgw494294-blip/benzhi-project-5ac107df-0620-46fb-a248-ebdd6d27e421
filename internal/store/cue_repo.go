@@ -52,8 +52,21 @@ func (t *Tx) DeleteCue(ctx context.Context, id string) error {
 }
 
 func (s *Store) CueProject(ctx context.Context, id string) (string, error) {
+	s.cueOwnerMu.Lock()
+	statement := s.cueOwnerLookup
+	if statement == nil {
+		var prepareErr error
+		statement, prepareErr = s.db.PrepareContext(ctx, `SELECT project_id FROM cues WHERE id=?`)
+		if prepareErr != nil {
+			s.cueOwnerMu.Unlock()
+			return "", prepareErr
+		}
+		s.cueOwnerLookup = statement
+	}
+	s.cueOwnerMu.Unlock()
+	defer statement.Close()
 	var projectID string
-	err := s.db.QueryRowContext(ctx, `SELECT project_id FROM cues WHERE id=?`, id).Scan(&projectID)
+	err := statement.QueryRowContext(ctx, id).Scan(&projectID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", domain.ErrNotFound
 	}
