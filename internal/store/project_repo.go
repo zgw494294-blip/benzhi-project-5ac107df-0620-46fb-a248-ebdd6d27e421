@@ -109,6 +109,10 @@ func (s *Store) SetBarrier(ctx context.Context, id string, enabled bool) error {
 	v := 0
 	if enabled {
 		v = 1
+		s.barrierProject = id
+	} else {
+		id = s.barrierProject
+		s.barrierProject = ""
 	}
 	res, err := s.db.ExecContext(ctx, `UPDATE projects SET write_barrier=? WHERE id=?`, v, id)
 	if err != nil {

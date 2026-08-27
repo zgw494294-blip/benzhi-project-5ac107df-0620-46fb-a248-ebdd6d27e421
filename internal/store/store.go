@@ -12,8 +12,9 @@ import (
 )
 
 type Store struct {
-	db  *sql.DB
-	now func() time.Time
+	db             *sql.DB
+	now            func() time.Time
+	barrierProject string
 }
 
 func Open(path string) (*Store, error) {
