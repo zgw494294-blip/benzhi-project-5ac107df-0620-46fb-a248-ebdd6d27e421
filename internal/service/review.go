@@ -19,17 +19,30 @@ func (e *LockGateError) Unwrap() error {
 	return domain.ErrValidation
 }
 
+func cloneLockGate(gate LockGate) LockGate {
+	copy := gate
+	copy.Items = append([]GateItem(nil), gate.Items...)
+	return copy
+}
+
 func (s *Service) CheckLockGate(ctx context.Context, projectID, reviewer string) (LockGate, error) {
 	p, err := s.Store.GetProject(ctx, projectID)
 	if err != nil {
 		return LockGate{}, err
+	}
+	reviewer = cleanActor(reviewer)
+	cacheKey := fmt.Sprintf("%s\x00%s\x00%d", projectID, reviewer, p.Revision)
+	s.gateMu.RLock()
+	cached, ok := s.gateCache[cacheKey]
+	s.gateMu.RUnlock()
+	if ok {
+		return cloneLockGate(cached), nil
 	}
 	gate := LockGate{Passed: true, ToRevision: p.Revision}
 	add := func(code, label string, passed bool, message string) {
 		gate.Items = append(gate.Items, GateItem{Code: code, Label: label, Passed: passed, Message: message})
 		gate.Passed = gate.Passed && passed
 	}
-	reviewer = cleanActor(reviewer)
 	add("independent_reviewer", "复核员独立", reviewer != "" && reviewer != p.LastEditor, func() string {
 		if reviewer == "" {
 			return "请填写复核员"
@@ -90,6 +103,9 @@ func (s *Service) CheckLockGate(ctx context.Context, projectID, reviewer string)
 		}
 		return "复核区间快照缺失或无法读取"
 	}())
+	s.gateMu.Lock()
+	s.gateCache[cacheKey] = cloneLockGate(gate)
+	s.gateMu.Unlock()
 	return gate, nil
 }
 
