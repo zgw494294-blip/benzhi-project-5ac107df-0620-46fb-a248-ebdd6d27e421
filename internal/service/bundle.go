@@ -66,6 +66,12 @@ func makeBundle(p domain.CaptionProject, cues []domain.CaptionCue, reviewer, id 
 }
 
 func (s *Service) GetBundle(ctx context.Context, projectID string) (BundleFiles, error) {
+	s.bundleMu.RLock()
+	cached, ok := s.bundleCache[projectID]
+	s.bundleMu.RUnlock()
+	if ok {
+		return cached, nil
+	}
 	r, err := s.Store.GetRelease(ctx, projectID)
 	if err != nil {
 		return BundleFiles{}, err
@@ -82,6 +88,13 @@ func (s *Service) GetBundle(ctx context.Context, projectID string) (BundleFiles,
 	if files.Release.WebVTTDigest != r.WebVTTDigest || files.Release.ManifestDigest != r.ManifestDigest || files.Release.CredentialDigest != r.CredentialDigest {
 		return files, fmt.Errorf("播出包摘要与锁版记录不一致")
 	}
+	s.bundleMu.Lock()
+	if cached, ok = s.bundleCache[projectID]; ok {
+		files = cached
+	} else {
+		s.bundleCache[projectID] = files
+	}
+	s.bundleMu.Unlock()
 	return files, nil
 }
 

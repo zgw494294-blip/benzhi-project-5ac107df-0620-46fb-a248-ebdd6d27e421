@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"sync"
 	"time"
 
 	"stagecaption/internal/quality"
@@ -10,16 +11,18 @@ import (
 )
 
 type Service struct {
-	Store   *store.Store
-	Quality *quality.Engine
-	Now     func() time.Time
+	Store       *store.Store
+	Quality     *quality.Engine
+	Now         func() time.Time
+	bundleMu    sync.RWMutex
+	bundleCache map[string]BundleFiles
 }
 
 func New(st *store.Store, q *quality.Engine) *Service {
 	if q == nil {
 		q = quality.New()
 	}
-	return &Service{Store: st, Quality: q, Now: time.Now}
+	return &Service{Store: st, Quality: q, Now: time.Now, bundleCache: make(map[string]BundleFiles)}
 }
 
 func newID(prefix string) string {
