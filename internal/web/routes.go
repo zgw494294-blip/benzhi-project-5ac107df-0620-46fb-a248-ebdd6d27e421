@@ -1,0 +1,27 @@
+package web
+
+func (h *Handler) routes() {
+	h.mux.HandleFunc("GET /healthz", h.HealthHandler)
+	h.mux.HandleFunc("GET /workbench", h.WorkbenchHandler)
+	h.mux.HandleFunc("GET /assets/app.css", h.CSSHandler)
+	h.mux.HandleFunc("GET /assets/app-extra.css", h.ExtraCSSHandler)
+	h.mux.HandleFunc("GET /assets/app.js", h.JSHandler)
+	h.mux.HandleFunc("GET /api/projects", h.ListProjectsHandler)
+	h.mux.HandleFunc("POST /api/projects", h.CreateProjectHandler)
+	h.mux.HandleFunc("GET /api/projects/{projectID}", h.GetProjectHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/leases", h.AcquireLeaseHandler)
+	h.mux.HandleFunc("DELETE /api/projects/{projectID}/leases", h.ReleaseLeaseHandler)
+	h.mux.HandleFunc("PUT /api/projects/{projectID}/cues", h.UpsertCueHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/cues/batch", h.BatchCueHandler)
+	h.mux.HandleFunc("DELETE /api/projects/{projectID}/cues/{cueID}", h.DeleteCueHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/validate", h.ValidateProjectHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/rehearsals", h.RecordRehearsalHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/remediations", h.RemediateHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/remediations/batch", h.BatchRemediateHandler)
+	h.mux.HandleFunc("GET /api/projects/{projectID}/revisions/diff", h.RevisionDiffHandler)
+	h.mux.HandleFunc("GET /api/projects/{projectID}/reviews/gate", h.LockGateHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/reviews", h.ReviewHandler)
+	h.mux.HandleFunc("GET /api/projects/{projectID}/bundle/{filename}", h.DownloadBundleHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/bundle/verify", h.VerifyBundleHandler)
+	h.mux.HandleFunc("POST /api/projects/{projectID}/bundle/verify-files", h.VerifyUploadedBundleHandler)
+}

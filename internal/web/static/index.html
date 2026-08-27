@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StageCaption 字幕锁版工作台</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/app-extra.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="eyebrow">ACCESSIBLE THEATRE OPS</span><h1>StageCaption</h1></div>
+    <div id="connection" class="signal">服务连接中</div>
+  </header>
+  <main class="shell">
+    <aside class="rail">
+      <div class="rail-title"><h2>演出项目</h2><button id="refresh-projects" class="icon-button" title="刷新">↻</button></div>
+      <form id="project-filter" class="filter-box">
+        <label>标题或制作版本<input name="keyword" maxlength="120" placeholder="输入关键词"></label>
+        <div class="form-row"><label>流程状态<select name="status"><option value="">全部状态</option><option>草稿</option><option>待校验</option><option>待排演</option><option>整改中</option><option>待复核</option><option>已锁版</option></select></label><label>稳定排序<select name="sort"><option value="updated">最后更新</option><option value="title">演出标题</option><option value="status">流程状态</option></select></label></div>
+        <div class="button-row"><button type="submit" class="secondary">筛选</button><button type="reset" class="secondary">清除</button></div>
+      </form>
+      <div id="project-list" class="project-list"></div>
+      <details class="create-box" open>
+        <summary>＋ 新建字幕项目</summary>
+        <form id="create-form">
+          <label>演出标题<input name="title" maxlength="120" required value="无障碍字幕排演"></label>
+          <label>制作版本<input name="productionVersion" maxlength="60" required value="首演版"></label>
+          <div class="form-row"><label>帧率<input name="frameRate" type="number" min="1" max="120" step="0.01" value="25" required></label><label>总时长（毫秒）<input name="durationMillis" type="number" min="1000" value="120000" required></label></div>
+          <label>台本时间基准<input name="timeOrigin" maxlength="80" required value="开场铃结束为 00:00:00.000"></label>
+          <label>建档人<input name="actor" maxlength="80" required value="字幕编辑"></label>
+          <button type="submit" class="primary">建立草稿</button>
+        </form>
+      </details>
+    </aside>
+    <section class="stage">
+      <div id="empty-state" class="empty-state"><div class="empty-mark">SC</div><h2>选择或建立一个字幕项目</h2><p>时间基准、排演证据和锁版摘要会在同一条可追溯链路中保存。</p></div>
+      <div id="workspace" hidden>
+        <section class="hero panel"><div><span id="project-version" class="eyebrow"></span><h2 id="project-title"></h2><p id="project-meta"></p></div><div><span id="status" class="status"></span><div id="revision" class="revision"></div></div></section>
+        <nav class="flow" aria-label="项目流程"><span>草稿</span><span>待校验</span><span>待排演</span><span>整改中</span><span>待复核</span><span>已锁版</span></nav>
+        <div id="notice" class="notice" hidden></div>
+        <section class="grid two">
+          <article class="panel"><div class="panel-head"><div><span class="step">01 / TIMELINE</span><h3>字幕时间轴</h3></div><span id="cue-count" class="count"></span></div><div id="cue-list" class="cue-list"></div>
+            <form id="cue-form" class="compact-form"><input name="id" type="hidden"><div class="form-row"><label>场次<input name="scene" maxlength="80" required value="第一场"></label><label>说话人<input name="speaker" maxlength="80" value="旁白"></label></div><label>字幕正文<textarea name="text" maxlength="500" required></textarea></label><div class="form-row three"><label>开始 ms<input name="startMillis" type="number" min="0" required></label><label>结束 ms<input name="endMillis" type="number" min="1" required></label><label>位置<input name="position" type="number" min="0" value="1"></label></div><label>编辑者<input name="actor" maxlength="80" required value="字幕编辑"></label><button type="submit" class="primary">取得场次租约并保存</button></form>
+            <details class="batch-box"><summary>批量粘贴入轨</summary><form id="batch-cue-form" class="compact-form"><div class="form-row"><label>目标场次<input name="scene" maxlength="80" required value="第一场"></label><label>编辑者<input name="actor" maxlength="80" required value="字幕编辑"></label></div><label>每行：说话人 ⇥ 正文 ⇥ 开始时间 ⇥ 结束时间 ⇥ 位置<textarea name="paste" required placeholder="旁白&#9;欢迎入场&#9;00:00:00.000&#9;00:00:02.000&#9;1"></textarea></label><div id="batch-preview" class="hint">尚未粘贴字幕。</div><button type="submit" class="primary">预览无误，整批入轨</button></form></details>
+          </article>
+          <article class="panel"><div class="panel-head"><div><span class="step">02 / QUALITY</span><h3>确定性规则检查</h3></div><button id="validate-button" class="primary">执行全量检查</button></div><p class="hint">检查覆盖缺口、重叠、停留时长、阅读速度、断行和禁用样式。</p><form id="finding-filter" class="inline-filter"><select name="severity"><option value="">全部严重程度</option><option value="blocking">阻断</option><option value="warning">警告</option></select><select name="rule"><option value="">全部规则</option></select><select name="scene"><option value="">全部场次</option></select><button class="secondary">筛选</button></form><div id="finding-summary" class="metric-row"></div><div id="finding-list" class="finding-list"></div></article>
+        </section>
+        <section class="grid two">
+          <article class="panel"><div class="panel-head"><div><span class="step">03 / REHEARSAL</span><h3>排演与问题</h3></div></div><form id="issue-filter" class="inline-filter"><select name="scene"><option value="">全部场次</option></select><select name="kind"><option value="">全部类型</option><option>提前</option><option>滞后</option><option>遮挡</option><option>语义</option></select><select name="status"><option value="">全部状态</option><option>待整改</option><option>已解决</option><option>观察项</option></select><select name="blocking"><option value="">全部属性</option><option value="true">阻断</option><option value="false">观察</option></select><button class="secondary">筛选</button></form><div id="issue-summary" class="metric-row"></div><div id="replay-windows" class="window-list"></div><div id="issue-list" class="issue-list"></div><form id="rehearsal-form" class="compact-form"><label>记录员<input name="recorder" value="排演记录员" required></label><label>排演备注<textarea name="notes">完整走台排演</textarea></label><div class="form-row"><label>问题字幕<select name="cueId"></select></label><label>问题类型<select name="kind"><option>提前</option><option>滞后</option><option>遮挡</option><option>语义</option></select></label></div><label class="check"><input name="blocking" type="checkbox"> 阻断播出的整改问题</label><label>问题说明<input name="note" maxlength="500" placeholder="留空表示本次排演无问题"></label><button type="submit" class="primary">完成本次排演</button></form></article>
+          <article class="panel"><div class="panel-head"><div><span class="step">04 / REMEDIATION</span><h3>批量整改与联合目标复演</h3></div></div><p class="hint">勾选同一场次的多个待整改问题，统一调整相关字幕后提交一个新修订。</p><form id="remediation-form" class="compact-form"><div class="form-row"><label>编辑者<input name="actor" value="整改编辑" required></label><label>场次<select name="scene" required></select></label></div><div id="remediation-batch-list" class="remediation-list"></div><label>逐问题解决说明<input name="resolutionNote" maxlength="500" required value="已按排演记录校正并联合复演"></label><button type="submit" class="primary">提交整改批次并联合复演</button></form></article>
+        </section>
+        <section class="grid two">
+          <article class="panel"><div class="panel-head"><div><span class="step">05 / INDEPENDENT REVIEW</span><h3>独立复核</h3></div></div><form id="diff-form" class="inline-filter"><label>起始修订<input name="from" type="number" min="1"></label><label>结束修订<input name="to" type="number" min="1"></label><button class="secondary">比较区间</button></form><div id="diff-summary" class="diff-summary"></div><div id="diff-list" class="diff-list"></div><div id="gate-list" class="gate-list"></div><form id="review-form" class="compact-form"><label>复核员（不得是最后编辑者）<input name="reviewer" value="内容复核员" required></label><label>复核意见<textarea name="note" required>差异、规则结果和排演证据均已审阅</textarea></label><div class="button-row"><button name="decision" value="return" type="submit" class="secondary">退回整改</button><button name="decision" value="lock" type="submit" class="primary">通过并锁版</button></div></form></article>
+          <article class="panel release-panel"><div class="panel-head"><div><span class="step">06 / RELEASE</span><h3>播出包与摘要凭据</h3></div><button id="verify-button" class="secondary">重新计算摘要</button></div><div id="release-empty" class="hint">锁版后生成 WebVTT、机器清单和 SHA-256 摘要凭据。</div><div id="release-box" hidden><div id="digest-list" class="digest-list"></div><div class="download-row"><a data-file="captions.vtt">WebVTT</a><a data-file="manifest.json">JSON 清单</a><a data-file="credential.json">摘要凭据</a></div><form id="verify-files-form" class="compact-form"><label>回选 WebVTT<input name="webvtt" type="file" accept=".vtt,text/vtt" required></label><label>回选 JSON 清单<input name="manifest" type="file" accept=".json,application/json" required></label><label>回选摘要凭据<input name="credential" type="file" accept=".json,application/json" required></label><button class="secondary">逐文件回读验真</button></form><div id="verify-result" class="verify-result"></div></div></article>
+        </section>
+        <section class="panel audit-panel"><div class="panel-head"><div><span class="step">AUDIT TRAIL</span><h3>修订与审计轨迹</h3></div></div><div id="audit-list" class="audit-list"></div></section>
+      </div>
+    </section>
+  </main>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
